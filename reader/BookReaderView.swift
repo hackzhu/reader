@@ -629,6 +629,9 @@ struct BookReaderView: View {
         .navigationBarHidden(true)
         .statusBarHidden(!showBars)
         .preferredColorScheme(theme == .night ? .dark : .light)
+        .onAppear {
+            book.lastOpenDate = Date()
+        }
         // ── 异步预处理：book.content 变化时才重新解析 ──────────
         .task(id: book.content) {
             await parseContent(book.content)

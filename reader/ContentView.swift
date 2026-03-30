@@ -10,7 +10,7 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var books: [Book]
+    @Query(sort: \Book.lastOpenDate, order: .reverse) private var books: [Book]
     @State private var showDocumentPicker = false
     @State private var errorMessage: String?
     @State private var showError = false
@@ -70,7 +70,7 @@ struct ContentView: View {
 
                                         // 书籍信息
                                         VStack(alignment: .center, spacing: 4) {
-                                            Text(book.author)
+                                            Text(book.displayTitle)
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                                 .lineLimit(1)
