@@ -476,6 +476,9 @@ struct BookReaderView: View {
 
     // MARK: - 计算属性（全部引用缓存，零重算）
 
+    /// 是否有覆盖层处于激活状态（工具栏 / 搜索 / 目录），用于控制状态栏的可见性
+    private var barsActive: Bool { showBars || showSearch || showTOC }
+
     private var prevChapter: Chapter? {
         guard !chapters.isEmpty, currentChapterIdx > 0 else { return nil }
         return chapters[currentChapterIdx - 1]
@@ -569,10 +572,11 @@ struct BookReaderView: View {
             theme.background.ignoresSafeArea()
 
             // ── 三段式布局：顶部栏 + 正文 + 底部栏 ──────────────
+            // 状态栏始终保留在布局中（仅改变透明度），避免阅读视口尺寸随工具栏显隐而变化
             VStack(spacing: 0) {
-                if !showBars && !showSearch && !showTOC {
-                    topStatusBar
-                }
+                topStatusBar
+                    .opacity(barsActive ? 0 : 1)
+                    .allowsHitTesting(!barsActive)
 
                 switch pageMode {
                 case .scroll:
@@ -581,9 +585,9 @@ struct BookReaderView: View {
                     horizontalPagedView
                 }
 
-                if !showBars && !showSearch && !showTOC {
-                    bottomStatusBar
-                }
+                bottomStatusBar
+                    .opacity(barsActive ? 0 : 1)
+                    .allowsHitTesting(!barsActive)
             }
 
             // ── 目录抽屉 ────────────────────────────────────────
