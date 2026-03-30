@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var showDocumentPicker = false
     @State private var errorMessage: String?
     @State private var showError = false
+    @State private var selectedBook: Book?
 
     var body: some View {
         NavigationStack {
@@ -86,6 +87,11 @@ struct ContentView: View {
                                     }
                                 }
                                 .contextMenu {
+                                    Button {
+                                        selectedBook = book
+                                    } label: {
+                                        Label("详情", systemImage: "info.circle")
+                                    }
                                     Button(role: .destructive) {
                                         if let index = books.firstIndex(where: { $0.id == book.id }) {
                                             modelContext.delete(books[index])
@@ -119,6 +125,16 @@ struct ContentView: View {
                 Button("确定") { }
             } message: { message in
                 Text(message)
+            }
+            .sheet(item: $selectedBook) { book in
+                NavigationStack {
+                    BookDetailView(book: book)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("完成") { selectedBook = nil }
+                            }
+                        }
+                }
             }
         }
     }

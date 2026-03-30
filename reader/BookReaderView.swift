@@ -233,15 +233,30 @@ struct ReaderSettingsPanel: View {
     @Binding var theme: ReadingTheme
     @Binding var pageMode: PageMode
     let theme_color: ReadingTheme // 当前主题色用于面板自身配色
+    var onShowDetail: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            // 把手
-            Capsule()
-                .fill(theme_color.textColor.opacity(0.25))
-                .frame(width: 36, height: 4)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
+            // 把手 + 右上角详情按钮
+            ZStack {
+                Capsule()
+                    .fill(theme_color.textColor.opacity(0.25))
+                    .frame(width: 36, height: 4)
+                if let onShowDetail {
+                    HStack {
+                        Spacer()
+                        Button(action: onShowDetail) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 18))
+                                .foregroundColor(theme_color.textColor.opacity(0.6))
+                        }
+                        .padding(.trailing, 16)
+                    }
+                }
+            }
+            .frame(height: 24)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
 
             VStack(spacing: 20) {
                 // 字体大小
@@ -439,6 +454,7 @@ struct BookReaderView: View {
     @State private var showTOC: Bool = false
     @State private var showSettings: Bool = false
     @State private var showSearch: Bool = false
+    @State private var showBookDetail: Bool = false
     @State private var jumpToLineIndex: Int? = nil
 
     // 搜索状态
@@ -629,6 +645,16 @@ struct BookReaderView: View {
         .navigationBarHidden(true)
         .statusBarHidden(!showBars)
         .preferredColorScheme(theme == .night ? .dark : .light)
+        .sheet(isPresented: $showBookDetail) {
+            NavigationStack {
+                BookDetailView(book: book)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("完成") { showBookDetail = false }
+                        }
+                    }
+            }
+        }
         // ── 异步预处理：book.content 变化时才重新解析 ──────────
         .task(id: book.content) {
             await parseContent(book.content)
@@ -880,7 +906,11 @@ struct BookReaderView: View {
                         wrapLineSpacing: $wrapLineSpacing,
                         theme: $theme,
                         pageMode: $pageMode,
-                        theme_color: theme
+                        theme_color: theme,
+                        onShowDetail: {
+                            withAnimation { showSettings = false; showBars = false }
+                            showBookDetail = true
+                        }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
