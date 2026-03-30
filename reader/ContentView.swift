@@ -10,10 +10,11 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var books: [Book]
+    @Query(sort: \Book.lastOpenDate, order: .reverse) private var books: [Book]
     @State private var showDocumentPicker = false
     @State private var errorMessage: String?
     @State private var showError = false
+    @State private var selectedBook: Book?
 
     var body: some View {
         NavigationStack {
@@ -70,22 +71,19 @@ struct ContentView: View {
 
                                         // 书籍信息
                                         VStack(alignment: .center, spacing: 4) {
-                                            Text(book.author)
+                                            Text(book.displayTitle)
                                                 .font(.caption)
                                                 .foregroundColor(.gray)
                                                 .lineLimit(1)
-
-                                            HStack(spacing: 4) {
-                                                Image(systemName: "calendar")
-                                                    .font(.caption2)
-                                                Text(book.addDate.formatted(date: .abbreviated, time: .omitted))
-                                                    .font(.caption2)
-                                            }
-                                            .foregroundColor(.gray)
                                         }
                                     }
                                 }
                                 .contextMenu {
+                                    Button {
+                                        selectedBook = book
+                                    } label: {
+                                        Label("详情", systemImage: "info.circle")
+                                    }
                                     Button(role: .destructive) {
                                         if let index = books.firstIndex(where: { $0.id == book.id }) {
                                             modelContext.delete(books[index])
@@ -119,6 +117,16 @@ struct ContentView: View {
                 Button("确定") { }
             } message: { message in
                 Text(message)
+            }
+            .sheet(item: $selectedBook) { book in
+                NavigationStack {
+                    BookDetailView(book: book)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("完成") { selectedBook = nil }
+                            }
+                        }
+                }
             }
         }
     }

@@ -233,15 +233,30 @@ struct ReaderSettingsPanel: View {
     @Binding var theme: ReadingTheme
     @Binding var pageMode: PageMode
     let theme_color: ReadingTheme // 当前主题色用于面板自身配色
+    var onShowDetail: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            // 把手
-            Capsule()
-                .fill(theme_color.textColor.opacity(0.25))
-                .frame(width: 36, height: 4)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
+            // 把手 + 右上角详情按钮
+            ZStack {
+                Capsule()
+                    .fill(theme_color.textColor.opacity(0.25))
+                    .frame(width: 36, height: 4)
+                if let onShowDetail {
+                    HStack {
+                        Spacer()
+                        Button(action: onShowDetail) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 18))
+                                .foregroundColor(theme_color.textColor.opacity(0.6))
+                        }
+                        .padding(.trailing, 16)
+                    }
+                }
+            }
+            .frame(height: 24)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
 
             VStack(spacing: 20) {
                 // 字体大小
@@ -439,6 +454,7 @@ struct BookReaderView: View {
     @State private var showTOC: Bool = false
     @State private var showSettings: Bool = false
     @State private var showSearch: Bool = false
+    @State private var showBookDetail: Bool = false
     @State private var jumpToLineIndex: Int? = nil
 
     // 搜索状态
@@ -475,6 +491,9 @@ struct BookReaderView: View {
     @State private var chapterLineIndices: [Int] = []
 
     // MARK: - 计算属性（全部引用缓存，零重算）
+
+    /// 是否有覆盖层处于激活状态（工具栏 / 搜索 / 目录），用于控制状态栏的可见性
+    private var barsActive: Bool { showBars || showSearch || showTOC }
 
     private var prevChapter: Chapter? {
         guard !chapters.isEmpty, currentChapterIdx > 0 else { return nil }
@@ -569,10 +588,11 @@ struct BookReaderView: View {
             theme.background.ignoresSafeArea()
 
             // ── 三段式布局：顶部栏 + 正文 + 底部栏 ──────────────
+            // 状态栏始终保留在布局中（仅改变透明度），避免阅读视口尺寸随工具栏显隐而变化
             VStack(spacing: 0) {
-                if !showBars && !showSearch && !showTOC {
-                    topStatusBar
-                }
+                topStatusBar
+                    .opacity(barsActive ? 0 : 1)
+                    .allowsHitTesting(!barsActive)
 
                 switch pageMode {
                 case .scroll:
@@ -581,9 +601,9 @@ struct BookReaderView: View {
                     horizontalPagedView
                 }
 
-                if !showBars && !showSearch && !showTOC {
-                    bottomStatusBar
-                }
+                bottomStatusBar
+                    .opacity(barsActive ? 0 : 1)
+                    .allowsHitTesting(!barsActive)
             }
 
             // ── 目录抽屉 ────────────────────────────────────────
@@ -629,6 +649,19 @@ struct BookReaderView: View {
         .navigationBarHidden(true)
         .statusBarHidden(!showBars)
         .preferredColorScheme(theme == .night ? .dark : .light)
+        .onAppear {
+            book.lastOpenDate = Date()
+        }
+                .sheet(isPresented: $showBookDetail) {
+            NavigationStack {
+                BookDetailView(book: book)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("完成") { showBookDetail = false }
+                        }
+                    }
+            }
+        }
         // ── 异步预处理：book.content 变化时才重新解析 ──────────
         .task(id: book.content) {
             await parseContent(book.content)
@@ -880,7 +913,11 @@ struct BookReaderView: View {
                         wrapLineSpacing: $wrapLineSpacing,
                         theme: $theme,
                         pageMode: $pageMode,
-                        theme_color: theme
+                        theme_color: theme,
+                        onShowDetail: {
+                            withAnimation { showSettings = false; showBars = false }
+                            showBookDetail = true
+                        }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }

@@ -17,6 +17,7 @@ final class Book {
     var currentPage: Int = 0
     var totalPages: Int = 0
     var lastReadLineIndex: Int = 0
+    var lastOpenDate: Date = Date()
 
     init(title: String, author: String = "未知", content: String) {
         self.title = title
