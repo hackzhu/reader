@@ -18,11 +18,6 @@ struct BookDetailView: View {
     @State private var lineCount: Int = 0
     @State private var chapterCount: Int = 0
 
-    private static let chapterRegex: NSRegularExpression? = try? NSRegularExpression(
-        pattern: #"^(第[零一二三四五六七八九十百千万\d]+[章节卷集部回篇]|Chapter\s*\d+|CHAPTER\s*\d+)"#,
-        options: .anchorsMatchLines
-    )
-
     private var readingProgressPercent: Int {
         guard lineCount > 0 else { return 0 }
         return min(100, Int(Double(book.lastReadLineIndex) / Double(lineCount) * 100))
@@ -119,21 +114,10 @@ struct BookDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .ignoresSafeArea(edges: .top)
         .task(id: book.id) {
-            let content = book.content
-            let wc = await Task.detached(priority: .userInitiated) {
-                content.filter { !$0.isWhitespace }.count
-            }.value
-            let lc = await Task.detached(priority: .userInitiated) {
-                content.split(separator: "\n", omittingEmptySubsequences: false).count
-            }.value
-            let cc = await Task.detached(priority: .userInitiated) {
-                guard let regex = await BookDetailView.chapterRegex else { return 0 }
-                let range = NSRange(content.startIndex..., in: content)
-                return regex.numberOfMatches(in: content, range: range)
-            }.value
-            wordCount = wc
-            lineCount = lc
-            chapterCount = cc
+            let metrics = await BookDetailMetricsCalculator.calculate(from: book.content)
+            wordCount = metrics.wordCount
+            lineCount = metrics.lineCount
+            chapterCount = metrics.chapterCount
         }
     }
 
